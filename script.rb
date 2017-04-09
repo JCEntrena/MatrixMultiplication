@@ -2,14 +2,14 @@
 #encoding: utf-8
 
 def createMatrix(n, m, max, name)
-  r = Random.new(28)
+  r = Random.new(280)
 
   newFile = File.new(name, "a+")
 
   newFile.write("#{n} #{m}\n")
   n.times do |i|
     m.times do |j|
-      newFile.write("#{r.rand(0...max.to_f)} ")
+      newFile.write("#{r.rand(0...max.to_f).round(3)} ")
     end
     newFile.write("\n")
   end
