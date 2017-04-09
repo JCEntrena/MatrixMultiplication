@@ -11,6 +11,24 @@
 using namespace std;
 
 /**
+ * Función de cálculo de tiempos.
+ * Usa clock_gettime.
+ */
+ timespec diff(timespec start, timespec end){
+     timespec temp;
+     if ((end.tv_nsec - start.tv_nsec) < 0) {
+       temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+       temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+     }
+     else{
+       temp.tv_sec = end.tv_sec - start.tv_sec;
+       temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+     }
+     return temp;
+ }
+
+
+/**
  * Función de lectura de archivos.
  * Lee una matriz de un archivo y la devuelve.
  */
@@ -41,6 +59,9 @@ int main(int argc, char *argv[]){
     cerr << "Necesito dos argumentos, los ficheros que contienen las matrices.\n";
     exit(-1);
   }
+  // Tiempos
+  timespec start, finish, dif, ini;
+
   // Datos del programa
   string file1, file2;
 
@@ -67,9 +88,10 @@ int main(int argc, char *argv[]){
   int rank, size;
   MPI_Status status;
 
-  // Inicializamos entorno paralelo.
-  MPI_Init(&argc, &argv);
+  // Inicializamos entorno paralelo, midiendo tiempos.
+  clock_gettime(CLOCK_REALTIME, &start);
 
+  MPI_Init(&argc, &argv);
   // Asignamos rank y obtenemos el tamaño.
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -80,17 +102,36 @@ int main(int argc, char *argv[]){
   */
 
     // Maestro. Envía el número de filas que va a calcular cada proceso, y recibe los datos.
-    // No realiza cálculos.
+    // Realiza sus cálculos y luego recibe los datos de los otros procesos.
 
   if (rank == 0){
+    clock_gettime(CLOCK_REALTIME, &finish);
+    ini = diff(start, finish);
+    printf("Tiempo de inicialización: %ld.%09ld\n",
+         ini.tv_sec, ini.tv_nsec);
 
-    int workers = size - 1;
+
+    // Para el trabajo
+    // Tendremos n trabajadores: el maestro y los n-1 esclavos.
+    int workers = size;
     int workers_left = workers;
     int rows_left = rows1;
     int row_count = 0;
     int rows_to_send;
 
-    for (int i = 1; i <= workers; ++i){
+    // Para el trabajo del Maestro: empieza siempre en la fila 0.
+    // Almacenamos el número de filas que va a calcular.
+    int my_rows = rows_left / workers_left;
+    rows_left -= my_rows;
+
+    // Quitamos un trabajador restante y actualizamos la fila por la que vamos.
+    workers_left--;
+    row_count += my_rows;
+
+    // cout << "El maestro reparte el trabajo." << endl;
+
+    // Para el reparto de trabajo al resto de procesos.
+    for (int i = 1; i < workers; ++i){
       // Repartimos filas según las que queden
       rows_to_send = rows_left / workers_left;
       rows_left -= rows_to_send;
@@ -105,23 +146,45 @@ int main(int argc, char *argv[]){
       row_count += rows_to_send;
     }
 
+
+    // Para el tiempo de cómputo
+    clock_gettime(CLOCK_REALTIME, &start);
+
     // Matriz producto. Inicializada a 0
     vector< vector<float>> matrixf(rows1, vector<float>(cols2, 0));
 
+    // Cálculos
+    //cout << "El maestro hace sus cálculos" << endl;
+
+    for (int i = 0; i < my_rows; ++i)
+      for (int k = 0; k < cols1; ++k)
+        for (int j = 0; j < cols2; ++j)
+          matrixf.at(i).at(j) += matrix1.at(i).at(k) * matrix2.at(k).at(j);
+
+    // Tiempos
+    clock_gettime(CLOCK_REALTIME, &finish);
+
+    dif = diff(start, finish);
+    printf("Tiempo de cómputo: %ld.%09ld\n",
+         dif.tv_sec, dif.tv_nsec);
+
     // Recepción de datos
-    for (int i = 1; i <= workers; ++i){
+    //cout << "Esperando recepción" << endl;
+
+    // Recepción de datos
+    for (int i = 1; i < workers; ++i){
       int first_row, number_rows;
       // Recibimos primera fila
       MPI_Recv(&first_row, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
       // Recibimos número de filas
       MPI_Recv(&number_rows, 1, MPI_INT, i, 1, MPI_COMM_WORLD, &status);
 
-      for (int j = 0; j < number_rows; ++j){
-        float aux[cols2];
+      for (int j = 0; j < number_rows; ++j)
         MPI_Recv(&matrixf.at(first_row + j).front(), cols2, MPI_FLOAT, i, j + 2, MPI_COMM_WORLD, &status);
-      }
 
     }
+
+    //cout << "Todo recibido" << endl;
 
     // Escritura de la matriz en un fichero
     ofstream ofs("Resultado.txt", ofstream::out);
@@ -133,6 +196,7 @@ int main(int argc, char *argv[]){
         ofs << matrixf.at(i).at(j) << " ";
       ofs << endl;
     }
+
   }
 
   // Esclavo.
@@ -168,7 +232,6 @@ int main(int argc, char *argv[]){
 
 
   }
-
 
   MPI_Finalize();
 
