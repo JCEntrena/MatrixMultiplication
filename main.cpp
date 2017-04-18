@@ -60,7 +60,7 @@ int main(int argc, char *argv[]){
     exit(-1);
   }
   // Tiempos
-  timespec start, finish, dif, ini;
+  timespec start, finish, dif, ini, rec;
 
   // Datos del programa
   string file1, file2;
@@ -171,6 +171,8 @@ int main(int argc, char *argv[]){
     // Recepción de datos
     //cout << "Esperando recepción" << endl;
 
+    clock_gettime(CLOCK_REALTIME, &start);
+
     // Recepción de datos
     for (int i = 1; i < workers; ++i){
       int first_row, number_rows;
@@ -183,6 +185,11 @@ int main(int argc, char *argv[]){
         MPI_Recv(&matrixf.at(first_row + j).front(), cols2, MPI_FLOAT, i, j + 2, MPI_COMM_WORLD, &status);
 
     }
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    rec = diff(start, finish);
+    printf("Tiempo de recepción: %ld.%09ld\n",
+         rec.tv_sec, rec.tv_nsec);
 
     //cout << "Todo recibido" << endl;
 

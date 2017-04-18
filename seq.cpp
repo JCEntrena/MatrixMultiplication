@@ -97,6 +97,8 @@ int main(int argc, char *argv[]){
       for (int j = 0; j < cols2; ++j)
         matrixf.at(i).at(j) += matrix1.at(i).at(k) * matrix2.at(k).at(j);
 
+  // Tiempos
+  clock_gettime(CLOCK_REALTIME, &finish);
 
   ofstream ofs("Resultado2.txt", ofstream::out);
 
@@ -108,8 +110,6 @@ int main(int argc, char *argv[]){
     ofs << endl;
   }
 
-  // Tiempos
-  clock_gettime(CLOCK_REALTIME, &finish);
 
   dif = diff(start, finish);
   printf("Tiempo de cómputo: %ld.%09ld\n",
