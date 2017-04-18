@@ -24,11 +24,15 @@ header-includes:
 
 En esta práctica, vamos a ver las ventajas de usar directivas MPI a la hora de calcular el producto de dos matrices cuadradas. A la hora de paralelizar este algoritmo he utilizado un reparto de tareas siguiendo un esquema _maestro-esclavo_, en el cual el maestro envía a cada esclavo la tarea que debe realizar, que en este caso son las filas que la matriz producto que debe calcular (o, equivalentemente, las filas de la primera matriz que va a utilizar). Una vez repartidas las tareas, el maestro también realiza cómputo, y se encarga de recibir los datos de los esclavos, agruparlos en una estructura de datos única y escribirlos en un fichero.
 
+Como se menciona anteriormente, cada proceso calculará una o varias filas de la matriz producto. He elegido esta representación, y no la representación por _tiles_ (submatrices dentro de la matriz) por simplicidad a la hora de hacer los cálculos correspondientes. Como veremos más adelante, los beneficios del algoritmo paralelo con esta representación son buenos.
+
 El producto de las matrices se ha calculado mediante un bucle que anida tres índices, lo que hace que tenga una complejidad computacional de $\mathcal{O}(n^3)$.
 
 # Consideraciones
 
 Debido a que la parte computacional es muy simple, no he intentado hacer ningún cambio para mejorar el código. La única prueba que hice fue alternar el orden de los bucles, para explotar el principio de localidad espacial de los datos. Aun así, las diferencias de tiempo de cómputo no eran significativas, por lo que finalmente decidí dejar la versión más eficiente teóricamente.
+
+Después de tomar los datos, me di cuenta de que estaba utilizando accesos a los vectores con el operador _::at_, en lugar de utilizar el acceso con corchetes. Al cambiar al acceso por corchetes, las diferencias de tiempo fueron sustanciales, entre cuatro y cinco veces menor al usar corchetes en lugar de _at_. Debido a que ya no podía tomar todos los tiempos, por no tener acceso al aula y estar cerca de la fecha de entrega, esta versión no se ha considerado. No obstante, para futuras prácticas en las que se considere este algoritmo, utilizaré la versión con acceso mediante corchetes.
 
 A la hora de resolver el problema, he realizado dos implementaciones: una completamente secuencial, contenida en el archivo _seq.cpp_, que no utiliza ningún tipo de directivas MPI, y otra paralela, en el archivo _main.cpp_. La versión paralela puede utilizarse como una versión secuencial si se utiliza un único proceso, aunque inicializará el entorno MPI, lo que causa un pequeño coste en cuanto al tiempo. Debido a esto, para el cálculo de la ganancia utilizaré los tiempos del programa secuencial para cuando tenga un solo proceso. El resto de tiempos serán del programa paralelo, y tendrá en cuenta la suma del tiempo de cómputo, de inicialización del entorno paralelo y de recepción de datos.
 
@@ -36,9 +40,7 @@ Las matrices utilizadas por el programa han sido generadas mediante un _script_ 
 
 ## Cargas de trabajo
 
-Las cargas de trabajo utilizadas han sido tres: matrices de tamaño $300$, $500$ y $700$. En cuanto al número de procesos, en ATCGRID se han hecho pruebas para $1$, $2$ y $3$ procesos.
-
-
+Las cargas de trabajo utilizadas han sido tres: matrices de tamaño $300$, $500$ y $700$. En cuanto al número de procesos, tanto en ATCGRID como en clase se han hecho pruebas para $1$, $2$ y $3$ procesos. En el caso de los ordenadores del aula de prácticas, se han utilizado tres máquinas conectadas a la misma subred, para reducir tanto como fuera posible el tiempo de recepción de datos.
 
 
 # Datos recopilados en ATCGRID
@@ -65,28 +67,67 @@ Procesos  & Tamaño & Tiempo creación & Tiempo cálculos     & Tiempo recepció
 \end{tabular}}
 \end{table}
 
-## Gráficas
 
-### Datos ATCGRID
+# Datos recopilados en clase
 
-Vemos la ganancia para 2 procesos:
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|c|c|c|c|c|c|c|}
+
+\hline
+
+Procesos  & Tamaño & Tiempo creación & Tiempo cálculos     & Tiempo recepción & Tiempo total   & Ganancia           \\ \hline
+1         &  300   &  -              &  1.536403792        &  -               &  1.536403792   &  1                 \\ \hline
+2         &  300   &  0.011870168    &  0.764955882        &  0.002312071     &  0.779138121   &  1.97192737794433  \\ \hline
+3         &  300   &  0.011917450    &  0.524875861        &  0.000390637     &  0.537183948   &  2.86010741333619  \\ \hline
+1         &  500   &  -              &  7.061141307        &  -               &  7.061141307   &  1                 \\ \hline
+2         &  500   &  0.011866305    &  3.534974234        &  0.004565863     &  3.551406402   &  1.98826619871594  \\ \hline
+3         &  500   &  0.011223163    &  2.418767544        &  0.000637803     &  2.43062851    &  2.90506808339873  \\ \hline
+1         &  700   &  -              &  19.370994116       &  -               &  19.370994116  &  1                 \\ \hline
+2         &  700   &  0.011842255    &  9.694439924        &  0.020059183     &  9.726341362   &  1.99160130156246  \\ \hline
+3         &  700   &  0.011377614    &  6.654617296        &  0.041775510     &  6.70777042    &  2.88784393369265  \\ \hline
+
+\end{tabular}}
+\end{table}
+
+
+# Gráficas
+
+Vemos la ganancias para 2 y 3 procesos en cada caso.
+
+## Datos ATCGRID
 
 \begin{figure}[H]
 \begin{centering}
-\includegraphics[width=0.8\textwidth]{Ganancia2ATC.png}
+\includegraphics[width=0.85\textwidth]{Ganancia2ATC.png}
 \caption{Ganancia ATC para 2 procesos}
 \end{centering}
 \end{figure}
 
-Y para 3 procesos:
+\begin{figure}[H]
+\begin{centering}
+\includegraphics[width=0.85\textwidth]{Ganancia3ATC.png}
+\caption{Ganancia ATC para 3 procesos}
+\end{centering}
+\end{figure}
+
+## Datos de clase
 
 \begin{figure}[H]
 \begin{centering}
-\includegraphics[width=0.8\textwidth]{Ganancia3ATC.png}
-\caption{Ganancia ATC para 3 procesos}
+\includegraphics[width=0.85\textwidth]{Ganancia2clase.png}
+\caption{Ganancia en clase para 2 procesos}
+\end{centering}
+\end{figure}
+
+\begin{figure}[H]
+\begin{centering}
+\includegraphics[width=0.85\textwidth]{Ganancia3clase.png}
+\caption{Ganancia en clase 3 procesos}
 \end{centering}
 \end{figure}
 
 # Conclusiones
 
-Para los cálculos realizados, hemos visto que paralelizar obtiene ganancias en relación directa con el número de procesos cuando las matrices tienen un tamaño elevado, creciendo la ganancia conforme crece el tamaño de las matrices. Esto se debe, principalmente, a que los tiempos de inicialización y de recepción de datos pierden relevancia con respecto a los cálculos. Mientras que en las matrices de tamaño $300$, el tiempo de cómputo representa alrededor del $90\%$ del tiempo total, el porcentaje aumenta cuanto más aumenta la matriz, sin que el tiempo de transmisión de datos llegue a ser relevante en ninguno de los casos estudiados.
+Para los cálculos realizados, hemos visto que paralelizar obtiene ganancias en relación directa con el número de procesos cuando las matrices tienen un tamaño elevado, creciendo la ganancia conforme crece el tamaño de las matrices. Esto se debe, principalmente, a que los tiempos de inicialización y de recepción de datos pierden relevancia con respecto a los cálculos. Mientras que en las matrices de tamaño $300$, el tiempo de cómputo en ATCGRID representa alrededor del $90\%$ del tiempo total, el porcentaje aumenta cuanto más aumenta la matriz, sin que el tiempo de transmisión de datos llegue a ser relevante en ninguno de los casos estudiados. En el caso del aula de prácticas, los tiempos de creación y recepción son aun más reducidos, lo que hace que la ganancia se corresponda con el número de procesos lanzados de una forma casi directa, estando por encima de $1.97$ para dos procesos y de $2.85$ para tres.
