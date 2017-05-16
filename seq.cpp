@@ -47,7 +47,7 @@ vector< vector<float> > readMatrix(string file){
   // Lectura.
   for (int i = 0; i < rows; ++i)
     for (int j = 0; j < cols; ++j)
-      ifs >> resultado.at(i).at(j);
+      ifs >> resultado[i][j];
 
   ifs.close();
 
@@ -57,16 +57,17 @@ vector< vector<float> > readMatrix(string file){
 
 int main(int argc, char *argv[]){
 
-  if (argc != 3){
-    cerr << "Necesito dos argumentos, los ficheros que contienen las matrices.\n";
+  if (argc != 4){
+    cerr << "Necesito tres argumentos, los dos ficheros que contienen las matrices y el nombre de la matriz de salida.\n";
     exit(-1);
   }
   // Datos del programa
-  string file1, file2;
+  string file1, file2, file3;
 
   // Lectura de argumentos
   file1 = argv[1];
   file2 = argv[2];
+  file3 = argv[3];
 
   // Declaración
   vector< vector<float>> matrix1 = readMatrix(file1);
@@ -74,9 +75,9 @@ int main(int argc, char *argv[]){
 
   // Tomamos las filas y columnas. Las necesitamos para definir la matrix producto.
   int rows1 = matrix1.size();
-  int cols1 = matrix1.at(0).size();
+  int cols1 = matrix1[0].size();
   int rows2 = matrix2.size();
-  int cols2 = matrix2.at(0).size();
+  int cols2 = matrix2[0].size();
 
   if (cols1 != rows2){
     cerr << "Las matrices no se pueden multiplicar." << endl;
@@ -95,25 +96,26 @@ int main(int argc, char *argv[]){
   for (int i = 0; i < rows1; ++i)
     for (int k = 0; k < cols1; ++k)
       for (int j = 0; j < cols2; ++j)
-        matrixf.at(i).at(j) += matrix1.at(i).at(k) * matrix2.at(k).at(j);
+        matrixf[i][j] += matrix1[i][k] * matrix2[k][j];
 
   // Tiempos
   clock_gettime(CLOCK_REALTIME, &finish);
 
-  ofstream ofs("Resultado2.txt", ofstream::out);
+  ofstream ofs(file3, ofstream::out);
 
   ofs << rows1 << " " << cols2 << endl;
 
   for (int i = 0; i < rows1; ++i){
     for (int j = 0; j < cols2; ++j)
-      ofs << matrixf.at(i).at(j) << " ";
+      ofs << matrixf[i][j] << " ";
     ofs << endl;
   }
 
-
   dif = diff(start, finish);
-  printf("Tiempo de cómputo: %ld.%09ld\n",
-          dif.tv_sec, dif.tv_nsec);
+
+  // Matrices, tamaño, tiempo
+  printf("%s %s, %d, %ld.%09ld\n",
+          file1.c_str(), file2.c_str(), rows1, dif.tv_sec, dif.tv_nsec);
 
 
   return(0);
