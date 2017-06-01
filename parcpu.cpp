@@ -182,8 +182,9 @@ int main(int argc, char *argv[]){
     rec = diff(start, finish);
 
     // Inicialización, cómputo, recepción
-    printf("%ld.%09ld, %ld.%09ld, %ld.%09ld\n",
-         ini.tv_sec, ini.tv_nsec, dif.tv_sec, dif.tv_nsec, rec.tv_sec, rec.tv_nsec);
+    printf("%s, %s, %ld.%09ld, %ld.%09ld, %ld.%09ld\n",
+          file1.c_str(), file2.c_str(), 
+          ini.tv_sec, ini.tv_nsec, dif.tv_sec, dif.tv_nsec, rec.tv_sec, rec.tv_nsec);
 
     //cout << "Todo recibido" << endl;
 

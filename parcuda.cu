@@ -96,7 +96,7 @@ pair<int, int> size(string file){
 void cudaErrorHandler(cudaError_t e, const int E)
 {
     if (e != cudaSuccess) {
-        fprintf(stdout, "ERROR(%d): %s\n", E, cudaGetErrorString(e));
+        fprintf(stderr, "ERROR(%d): %s\n", E, cudaGetErrorString(e));
         exit(EXIT_FAILURE);
     }
 }
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
     file3 = argv[3];
 
     // Para medir el tiempo de suma
-    timespec start, finish, dif;
+    timespec start, finish, dif, t_alloc, t_comp;
 
     cerr << "Leyendo archivos" << endl;
 
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     float* m3 = (float *)malloc(size);
 
     // Inicialización del tiempo
-    clock_gettime(CLOCK_REALTIME, &start);
+    clock_gettime(CLOCK_REALTIME, &start); 
 
     cerr << "Empezamos cudaMalloc" << endl;
 
@@ -199,7 +199,13 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
+    clock_gettime(CLOCK_REALTIME, &finish); 
+    t_alloc = diff(start, finish); 
+
+    // Producto
     cerr << "Lanzamos producto" << endl;
+
+    clock_gettime(CLOCK_REALTIME, &start); 
 
     // Launch the Vector Add CUDA Kernel
     int threadsPerBlock = 256;
@@ -213,12 +219,17 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Failed to launch matrixMul kernel (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+ 
+    clock_gettime(CLOCK_REALTIME, &finish); 
+    t_comp = diff(start, finish); 
+
+    // Copia en memoria principal  
 
     cerr << "Copia en memoria principal" << endl;
 
     // Copy the device result vector in device memory to the host result vector
     // in host memory.
-    printf("Copy output data from the CUDA device to the host memory\n");
+    
     err = cudaMemcpy(m3, d_C, size, cudaMemcpyDeviceToHost);
 
     if (err != cudaSuccess)
@@ -231,8 +242,8 @@ int main(int argc, char *argv[])
     clock_gettime(CLOCK_REALTIME, &finish);
     // Resultado
     dif = diff(start, finish);
-    printf("Tiempo de cómputo: %ld.%09ld\n",
-            dif.tv_sec, dif.tv_nsec);
+    printf("%ld.%09ld, %ld.%09ld, %ld.%09ld\n",
+            t_alloc.tv_sec, t_alloc.tv_nsec, t_comp.tv_sec, t_comp.tv_nsec, dif.tv_sec, dif.tv_nsec);
 
 
     // Free device global memory
